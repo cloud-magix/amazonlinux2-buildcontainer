@@ -1,0 +1,152 @@
+# yaml-language-server: $schema = https://json.schemastore.org/circleciconfig.json
+version: 2.1
+
+jobs:
+  build_and_publish:
+    parameters:
+      image:
+        description: Machine image name
+        type: string
+      resource_class:
+        description: Resource class of machine
+        type: string
+      image_name:
+        description: Named to be used for image in Docker Registry (don't include the tag)
+        type: string
+      platform:
+        description: Platform for image
+        type: string
+    machine:
+      image: << parameters.image >>
+    resource_class: << parameters.resource_class >>
+    steps:
+      - checkout
+      - run: 
+          name: Docker Login
+          command: |
+            docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_TOKEN
+      - run:
+          name: Setup Multi-Arch Support
+          command: |
+            docker buildx ls
+            docker context create buildx_context
+            docker buildx create buildx_context --use
+            docker buildx inspect --bootstrap
+      - run:
+          name: Docker Build
+          command: |
+            docker build \
+              --platform << parameters.platform >> \
+              --tag << parameters.image_name >>:latest .
+      - when:
+          condition:
+            matches:
+              pattern: "^v.+$"
+              value: << pipeline.git.tag >>
+          steps:
+            - run:
+                name: Docker Publish
+                command: |
+                  platform="<< parameters.platform >>"
+                  validPlatform=${platform/linux\//}
+                  docker tag << parameters.image_name >>:latest << parameters.image_name >>:<< pipeline.git.tag >>-${validPlatform}
+                  docker tag << parameters.image_name >>:latest << parameters.image_name >>:latest-${validPlatform}
+                  docker push << parameters.image_name >>:<< pipeline.git.tag >>-${validPlatform}
+                  docker push << parameters.image_name >>:latest-${validPlatform}
+
+  create_and_publish_manifest:
+    parameters:
+      platforms:
+        description: Space-Delimitted Platforms for image (i.e. "linux/amd64 linux/arm64")
+        type: string
+      image_name:
+        description: Named to be used for image in Docker Registry (don't include the tag)
+        type: string
+    machine:
+      image: ubuntu-2004:202101-01
+    resource_class: medium
+    steps:
+      - checkout
+      - run:
+          name: Docker Install Test
+          command: |
+            docker --help || true
+      - run: 
+          name: Docker Login
+          command: |
+            docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_TOKEN
+      - run:
+          name: Docker Create and Publish Manifest
+          command: |
+            for platform in << parameters.platforms >>; do
+              validPlatform=${platform/linux\//}
+              docker manifest create << parameters.image_name >>:<< pipeline.git.tag >> \
+                --amend << parameters.image_name >>:<< pipeline.git.tag >>-${validPlatform}
+              docker manifest create << parameters.image_name >>:latest \
+                --amend << parameters.image_name >>:latest-${validPlatform}
+            done
+            docker manifest push << parameters.image_name >>:<< pipeline.git.tag >>
+            docker manifest push << parameters.image_name >>:latest
+
+
+workflows:
+  build:
+    jobs:
+      - build_and_publish:
+          name: Build and Publish ARM64
+          image: ubuntu-2004:202101-01
+          resource_class: arm.medium
+          platform: linux/arm64
+          image_name: brutalsimplicity/amazonlinux2-buildcontainer
+          context: cloud-magix
+          filters:
+            branches:
+              only: main
+
+      - build_and_publish:
+          name: Build and Publish AMD64
+          image: ubuntu-2004:202101-01
+          resource_class: medium
+          platform: linux/amd64
+          image_name: brutalsimplicity/amazonlinux2-buildcontainer
+          context: cloud-magix
+          filters:
+            branches:
+              only: main
+
+  build_and_publish:
+    jobs:
+      - build_and_publish:
+          name: Build and Publish ARM64
+          image: ubuntu-2004:202101-01
+          resource_class: arm.medium
+          platform: linux/arm64
+          image_name: brutalsimplicity/amazonlinux2-buildcontainer
+          context: cloud-magix
+          filters:
+            tags:
+              only: /v.*/
+
+      - build_and_publish:
+          name: Build and Publish AMD64
+          image: ubuntu-2004:202101-01
+          resource_class: medium
+          platform: linux/amd64
+          image_name: brutalsimplicity/amazonlinux2-buildcontainer
+          context: cloud-magix
+          filters:
+            tags:
+              only: /v.*/
+
+      - create_and_publish_manifest: 
+          requires:
+            - Build and Publish ARM64
+            - Build and Publish AMD64
+          platforms: linux/arm64 linux/amd64
+          image_name: brutalsimplicity/amazonlinux2-buildcontainer
+          name: Create and Publish Manifest
+          context: cloud-magix
+          filters:
+            tags:
+              only: /v.*/
+          
