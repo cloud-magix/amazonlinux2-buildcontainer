@@ -21,7 +21,7 @@ jobs:
     resource_class: << parameters.resource_class >>
     steps:
       - checkout
-      - run: 
+      - run:
           name: Docker Login
           command: |
             docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_TOKEN
@@ -71,7 +71,7 @@ jobs:
           name: Docker Install Test
           command: |
             docker --help || true
-      - run: 
+      - run:
           name: Docker Login
           command: |
             docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_TOKEN
@@ -88,7 +88,6 @@ jobs:
             docker manifest push << parameters.image_name >>:<< pipeline.git.tag >>
             docker manifest push << parameters.image_name >>:latest
 
-
 workflows:
   build:
     jobs:
@@ -98,7 +97,7 @@ workflows:
           resource_class: arm.medium
           platform: linux/arm64
           image_name: brutalsimplicity/amazonlinux2-buildcontainer
-          context: cloud-magix
+          context: cloudmagick
           filters:
             branches:
               only: main
@@ -109,7 +108,7 @@ workflows:
           resource_class: medium
           platform: linux/amd64
           image_name: brutalsimplicity/amazonlinux2-buildcontainer
-          context: cloud-magix
+          context: cloudmagick
           filters:
             branches:
               only: main
@@ -122,7 +121,7 @@ workflows:
           resource_class: arm.medium
           platform: linux/arm64
           image_name: brutalsimplicity/amazonlinux2-buildcontainer
-          context: cloud-magix
+          context: cloudmagick
           filters:
             tags:
               only: /v.*/
@@ -133,20 +132,19 @@ workflows:
           resource_class: medium
           platform: linux/amd64
           image_name: brutalsimplicity/amazonlinux2-buildcontainer
-          context: cloud-magix
+          context: cloudmagick
           filters:
             tags:
               only: /v.*/
 
-      - create_and_publish_manifest: 
+      - create_and_publish_manifest:
           requires:
             - Build and Publish ARM64
             - Build and Publish AMD64
           platforms: linux/arm64 linux/amd64
           image_name: brutalsimplicity/amazonlinux2-buildcontainer
           name: Create and Publish Manifest
-          context: cloud-magix
+          context: cloudmagick
           filters:
             tags:
               only: /v.*/
-          
