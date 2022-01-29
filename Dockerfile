@@ -22,5 +22,6 @@ RUN python -m ensurepip --upgrade && \
     pip install awscli boto3
 RUN npm install -g npm@latest && rm -rf /tmp
 RUN npm install -g yarn && rm -rf /tmp
+RUN npm install -g nx && rm -rf /tmp
 
 WORKDIR /workspace
