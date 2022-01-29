@@ -4,6 +4,7 @@ RUN curl --silent --location https://rpm.nodesource.com/setup_14.x | bash -
 RUN yum -y install nodejs
 RUN yum -y install openssh-server openssh-clients
 RUN yum -y install \
+    git \
     make \
     wget \
     tar \
