@@ -123,8 +123,10 @@ workflows:
           image_name: brutalsimplicity/amazonlinux2-buildcontainer
           context: cloudmagick
           filters:
+            branches:
+              ignore: /.*/
             tags:
-              only: /v.*/
+              only: /^v.*/
 
       - build_and_publish:
           name: Build and Publish AMD64
@@ -134,8 +136,10 @@ workflows:
           image_name: brutalsimplicity/amazonlinux2-buildcontainer
           context: cloudmagick
           filters:
+            branches:
+              ignore: /.*/
             tags:
-              only: /v.*/
+              only: /^v.*/
 
       - create_and_publish_manifest:
           requires:
@@ -146,5 +150,7 @@ workflows:
           name: Create and Publish Manifest
           context: cloudmagick
           filters:
+            branches:
+              ignore: /.*/
             tags:
-              only: /v.*/
+              only: /^v.*/
